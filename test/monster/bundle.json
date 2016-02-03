@@ -1,0 +1,8 @@
+{
+	"name": "monster",
+	"exports": {
+		"THREE.JSONLoader": {
+			"monster": "monster.js"
+		}
+	}
+}

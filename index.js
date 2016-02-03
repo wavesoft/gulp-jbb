@@ -145,6 +145,12 @@ module.exports = function( options ) {
 	    var finished = function( err, contents ) {
 	    	// Replace file contents
 			file.contents = contents;
+
+			// Change extension
+			var path = file.path;
+			var parts = path.split("."); parts.pop();
+			file.path =  parts.join(".") + ".jbb";
+
 			// Pass along the new file
 			self.push(file);
 			done();
