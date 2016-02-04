@@ -8,7 +8,7 @@ gulp.task('default', function() {
 
 	return gulp
 		.src([
-			'monster/bundle.json'
+			'md2.jbbsrc'
 		])
 		.pipe(jbb({
 			'profile': 'three'
