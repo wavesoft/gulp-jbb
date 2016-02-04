@@ -69,10 +69,11 @@ function processAsStream( file ) {
 function compileJBB( config, parseCallback, resultCallback ) {
 
 	// Continue compiling the JBB bundle
-	var compile = function( bundleJSON, path, tempName ) {
+	var compile = function( bundleJSON, bundlePath, tempName ) {
 
 		// Update path in config
-		config['path'] = path;
+		if (!config['path'])
+			config['path'] = path.dirname(bundlePath);
 
 		// Create the JBB bundle
 		JBBCompiler.compile(
@@ -128,41 +129,48 @@ module.exports = function( options ) {
 	// Expose the config so we can test it
 	stream.config = config;
 
-	function compile(file, enc, done) {
-
-		/*jshint validthis: true */
+	function compile(originalFile, enc, done) {
 		var self = this;
-
-		// Check for empty file
-		if (file.isNull()) {
-			// Pass along the empty file to the next plugin
-			self.push(file);
-			done();
-			return;
-		}
 
 	    // Call when finished with compression
 	    var finished = function( err, contents ) {
 	    	// Replace file contents
-			file.contents = contents;
+			originalFile.contents = contents;
 
 			// Change extension
-			var path = file.path;
+			var path = originalFile.path;
 			var parts = path.split("."); parts.pop();
-			file.path =  parts.join(".") + ".jbb";
+			originalFile.path =  parts.join(".") + ".jbb";
 
 			// Pass along the new file
-			self.push(file);
+			self.push(originalFile);
 			done();
 			return;
 	    }
 
 		// Compile and wrap results accordingly
-		if (file.isBuffer()) {
-			compileJBB( config, processAsBuffer(file), streamOutput( finished ) );
-		} else {
-			compileJBB( config, processAsStream(file), streamOutput( finished ) );
-		}
+		fs.readFile(originalFile.path + "/bundle.json", 'utf8', function (err,data) {
+
+			// Raise errors in case there is something wrong
+			if (err) {
+				var error = new PluginError(PLUGIN_NAME, err, { showStack: true });
+				self.emit('error', error);
+				done();
+				return;
+			} 
+
+			// Compile JBB using the bundle contents
+			compileJBB( config, processAsBuffer({
+				'contents': data,
+				'path': originalFile.path + "/bundle.json"
+			}), streamOutput( finished ) );
+
+		});
+		// if (file.isBuffer()) {
+		// 	compileJBB( config, processAsBuffer(file), streamOutput( finished ) );
+		// } else {
+		//  compileJBB( config, processAsStream(file), streamOutput( finished ) );
+		// }
 
 	}
 
