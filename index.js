@@ -19,12 +19,12 @@
 
 var through2 		= require('through2');
 var gutil 			= require('gulp-util');
-var PluginError 	= gutil.PluginError;
 var temp 			= require("temp").track();
 var toArray  		= require('stream-to-array');
 var fs   			= require('fs');
 var path 			= require('path');
 var JBBCompiler		= require("jbb/compiler");
+var PluginError 	= gutil.PluginError;
 
 const PLUGIN_NAME 	= 'gulp-jbb';
 
@@ -32,11 +32,19 @@ const PLUGIN_NAME 	= 'gulp-jbb';
  * Read resulting bundle and return a stream with it
  */
 function streamOutput( callback ) {
-	return function(err, filename) {
+	return function(err, filenames) {
 		if (err) {
 			callback(err, null);
 		} else {
-			callback(err, fs.createReadStream(filename));
+			// Create read streams from each input
+			var streams = []
+			for (var i=0; i<filenames.suffix.length; i++)
+				streams.push([
+					fs.createReadStream( filenames.basename + filenames.suffix[i]),
+					filenames.suffix[i]
+				]);
+			// Callback with streams
+			callback(err, streams);
 		}
 	}
 }
@@ -82,8 +90,22 @@ function compileJBB( config, parseCallback, resultCallback ) {
 				config,
 				function() {
 
-					// Trigger callback
-					resultCallback( null, tempName );
+					// Check for sparse bundles
+					if (config['sparse']) {
+						resultCallback( null, {
+							'basename': tempName,
+							'suffix': [
+								'.jbbp', '_b16.jbbp', 
+							  	'_b32.jbbp', '_b64.jbbp' 
+							]
+						}); 
+					} else {
+						// Trigger callback
+						resultCallback( null, {
+							'basename': tempName,
+							'suffix': [ '.jbb' ]
+						});
+					}
 
 				}
 			);
@@ -91,7 +113,7 @@ function compileJBB( config, parseCallback, resultCallback ) {
 	};
 
 	// Open a new temporary file (to be tracked by temp)
-	temp.open({suffix: '.jbb'}, function(err, info) {
+	temp.open({suffix: '_tmp'}, function(err, info) {
 
 		// Handle errors
 		if (err) {
@@ -133,17 +155,22 @@ module.exports = function( options ) {
 		var self = this;
 
 	    // Call when finished with compression
-	    var finished = function( err, contents ) {
-	    	// Replace file contents
-			originalFile.contents = contents;
+	    var finished = function( err, streams ) {
 
-			// Change extension
+			// Get base name
 			var path = originalFile.path;
 			var parts = path.split("."); parts.pop();
-			originalFile.path =  parts.join(".") + ".jbb";
+			var baseName =  parts.join(".");
 
-			// Pass along the new file
-			self.push(originalFile);
+	    	// Push each stream to output
+	    	for (var i=0; i<streams.length; i++) {
+	    		var f = originalFile.clone();
+	    		f.contents = streams[i][0]; // Content
+	    		f.path = baseName + streams[i][1]; // Suffix
+				self.push(f);
+	    	}
+
+	    	// We are done
 			done();
 			return;
 	    }
@@ -166,11 +193,6 @@ module.exports = function( options ) {
 			}), streamOutput( finished ) );
 
 		});
-		// if (file.isBuffer()) {
-		// 	compileJBB( config, processAsBuffer(file), streamOutput( finished ) );
-		// } else {
-		//  compileJBB( config, processAsStream(file), streamOutput( finished ) );
-		// }
 
 	}
 

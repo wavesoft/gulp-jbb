@@ -22,9 +22,6 @@
     "url": "https://github.com/wavesoft/gulp-jbb/issues"
   },
   "homepage": "https://github.com/wavesoft/gulp-jbb#readme",
-  "devDependencies": {
-    "gulp": "^3.9.0"
-  },
   "dependencies": {
     "gulp-util": "^3.0.7",
     "stream-to-array": "^2.2.1",
