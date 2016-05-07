@@ -1,5 +1,7 @@
 # gulp-jbb
 
+[![Version](https://img.shields.io/npm/v/gulp-jbb.svg?label=version&maxAge=2592000)](https://www.npmjs.com/package/gulp-jbb)
+
 > Compile javascript bundles to binary bundles using the [jbb compiler](https://github.com/wavesoft/jbb)
 
 ## Installation
